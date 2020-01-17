@@ -1,0 +1,214 @@
+
+
+
+ARM Macro Assembler    Page 1 
+
+
+    1 00000000         ;/******************************************************
+                       **********
+    2 00000000         ;Ê±¼ä£º 2014.2.22
+    3 00000000         ;×÷Õß£º lza1205
+    4 00000000         ;¹¦ÄÜ£º »ùÓÚ ARM Cortex-M3 ÄÚºËµÄÐ¾Æ¬Ïà¹Ø»ã±à´úÂë£¬±¾ÏµÍ
+                       ³»ùÓÚ 
+    5 00000000         ;  stm32f103ze
+    6 00000000         ;
+    7 00000000         ;  Ö÷ÒªÊµÏÖÒÔÏÂº¯Êý
+    8 00000000         ;   __cpu_interrupt_disable();   //½ûÖ¹ÖÐ¶Ï
+    9 00000000         ;   __cpu_sys_interrupt_enable();  //´ò¿ªÖÐ¶Ï
+   10 00000000         ;   __cpu_task_shced();     //ÈÎÎñµ÷¶È
+   11 00000000         ;   __cpu_start_shced     //¿ªÊ¼µ÷¶È£¬ÓÃÓÚÄÚºËµÚÒ»´Îµ÷¶È
+                       
+   12 00000000         ;   __cpu_int_shced()     //ÖÐ¶ÏÍË³öÊ±µ÷ÓÃ
+   13 00000000         ;
+   14 00000000         ;  ÊÂÊµÉÏ£¬ÕæÕýµÄÈÎÎñÇÐ»»²»ÊÇÔÚ __cpu_task_shced Õâ¸öº¯Ê
+                       ýÖÐÍê³É£¬
+   15 00000000         ; Õâ¸öº¯Êý ²»¹ý ´¥·¢Ò»´Î pendSV ÖÐ¶Ï¶øÒÑ¡£
+   16 00000000         ;  
+   17 00000000         ;*******************************************************
+                       *********/
+   18 00000000         
+   19 00000000         
+   20 00000000         ;*******************************************************
+                       *************
+   21 00000000         ;                 *
+   22 00000000         ;    È«¾Ö±äÁ¿µÄÉùÃ÷          *
+   23 00000000         ;                 *
+   24 00000000         ;*******************************************************
+                       ************* 
+   25 00000000         ;ÉùÃ÷ÕâÐ©±äÁ¿ÊÇÔÚ±¾ÎÄ¼þÖÐ¶¨Òå£¬ÇÒ¿ÉÒÔ±»ÆäËûÎÄ¼þÒýÓÃ
+   26 00000000                 EXPORT           start_app   ;½ûÖ¹ÖÐ¶Ï
+   27 00000000         
+   28 00000000         ;*******************************************************
+                       *********
+   29 00000000         ;                 *
+   30 00000000         ;   Ïàµ±ÓÚ C ÓïÑÔµÄºê¶¨Òå
+   31 00000000         ;  ÕâÐ©¼Ä´æÆ÷µÄ¾ßÌåº¬Òå£¬Çë²Î¿¼ Cortex-M3 È¨ÍþÖ¸ÄÏ.pdf  
+                       135 Ò³
+   32 00000000         ;                 *
+   33 00000000         ;*******************************************************
+                       *********
+   34 00000000 E000ED04 
+                       NVIC_INT_CTRL
+                               EQU              0xE000ED04  ;ÖÐ¶Ï¿ØÖÆ¼°Æä×´Ì¬¼Ä
+                                                            ´æÆ÷ ICSR µÄµØÖ·   
+                                                                        
+   35 00000000 E000ED22 
+                       NVIC_SYSPRI14
+                               EQU              0xE000ED22  ;PendSV ÓÅÏÈ¼¶¼Ä´æÆ
+                                                            ÷µØÖ·              
+                                                                      
+   36 00000000 000000FF 
+                       NVIC_PENDSV_PRI
+                               EQU              0xFF        ;PendSV ÖÐ¶ÏµÄÓÅÏÈ¼
+                                                            ¶                  
+                                                                      
+   37 00000000 10000000 
+
+
+
+ARM Macro Assembler    Page 2 
+
+
+                       NVIC_PENDSVSET
+                               EQU              0x10000000  ;Î» 28 Îª1         
+                                                                           
+   38 00000000         
+   39 00000000         
+   40 00000000         ;*******************************************************
+                       *************
+   41 00000000         ;                 *
+   42 00000000         ;      ¶ÎÉùÃ÷          *
+   43 00000000         ;                 *
+   44 00000000         ;*******************************************************
+                       *************
+   45 00000000         ; Ðí¶à ucosII µÄÒÆÖ²°æ±¾¶¼ÊÇÈçÏÂ±êºÅ£º
+   46 00000000         ;  RSEG CODE:CODE:NOROOT(2)
+   47 00000000         ; ¸Ã±êºÅµÄº¬ÒåÊÇ RSEG Ñ¡ÔñÒ»¸öÒÑÔÚÇ°Ãæ¶¨Òå¹ýµÄÔÙ¶¨Î»¶Î×÷
+                       Îªµ±Ç°¶Î¡£
+   48 00000000         ;     SEG ÊÇ´ÓÐÂ¶¨Î»¶Î
+   49 00000000         ;     CODE Ç°ÃæÓÐ¸ö¶ÎµÃ¶ÎÃûÎª CODE
+   50 00000000         ;     code ¶ÎµÃÊôÐÔÎª ´úÂë¶Î
+   51 00000000         ;     noroot Èç¹û±àÒëµÄÊ±ºòÃ»ÓÐÒýÓÃµ½ÏÂÃæµÄ±êºÅ£¬Ôò²»±àÒ
+                       ë½øÈ¥
+   52 00000000         ;     (2)  2^2 ×Ö½Ú¶ÔÆë
+   53 00000000         ; µ«¶ÔÓÚ MDK µÄ±àÒëÆ÷¶øÑÔ£¬È´²»ÊÇÉÏÃæµÄÐ´·¨
+   54 00000000         ; AREA |.text|, CODE, READONLY, ALIGN=2  ;AREA |.text| Ñ
+                       ¡Ôñ¶Î |.text|¡£
+   55 00000000         ;CODE±íÊ¾´úÂë¶Î£¬READONLY±íÊ¾Ö»¶Á£¨È±Ê¡£©
+   56 00000000         ;ALIGN=2±íÊ¾4×Ö½Ú¶ÔÆë¡£ÈôALIGN=n£¬Õâ2^n¶ÔÆë
+   57 00000000         ; THUMB                                  ;Thumb ´úÂë
+   58 00000000         ; REQUIRE8                               ;Ö¸¶¨µ±Ç°ÎÄ¼þÒª
+                       Çó¶ÑÕ»°Ë×Ö½Ú¶ÔÆë
+   59 00000000         ; PRESERVE8                              ;ÁîÖ¸¶¨µ±Ç°ÎÄ¼þ
+                       ±£³Ö¶ÑÕ»°Ë×Ö½Ú¶ÔÆë
+   60 00000000         ;*******************************************************
+                       *************
+   61 00000000                 AREA             |.text|, CODE, READONLY, ALIGN=
+2 
+                                                            ;AREA |.text| Ñ¡Ôñ¶
+                                                            Î |.text|¡£
+   62 00000000         ;CODE±íÊ¾´úÂë¶Î£¬READONLY±íÊ¾Ö»¶Á£¨È±Ê¡£©
+   63 00000000         ; |.text| ÊÇÔÚÇ°Ãæ¶¨ÒåÁËµÄ£¬ ÔÚÄÄ±»¶¨ÒåÄØ£¿
+   64 00000000         ; È¥¿´ÏÂÆô¶¯´úÂë¡£¾ÍÖªµÀÁË
+   65 00000000         ; ÔÚÕâÀïË³µÀËµÏÂ£¬flash µÄµÚÒ»¸öÊý¾Ý¶Î£¬»òÕß
+   66 00000000         ; ËµÊÇ´úÂë¶Î£¬ÊÇ RESET ¶Î£¬ÎªÊ²Ã´ËüÊÇµÚÒ»¸öÄØ£¿
+   67 00000000         ; Çë²Î¿¼ stm32.sct ÅäÖÃÎÄ¼þ
+   68 00000000         ;ALIGN=2±íÊ¾4×Ö½Ú¶ÔÆë¡£ÈôALIGN=n£¬Õâ2^n¶ÔÆë
+   69 00000000                 THUMB                        ;Thumb ´úÂë
+   70 00000000                 REQUIRE8                     ;Ö¸¶¨µ±Ç°ÎÄ¼þÒªÇó¶Ñ
+                                                            Õ»°Ë×Ö½Ú¶ÔÆë
+   71 00000000                 PRESERVE8                    ;ÁîÖ¸¶¨µ±Ç°ÎÄ¼þ±£³Ö
+                                                            ¶ÑÕ»°Ë×Ö½Ú¶ÔÆë
+   72 00000000         
+   73 00000000         start_app
+   74 00000000 4801            LDR              R0, =0x8003400
+   75 00000002 4780            BLX              R0
+   76 00000004 4770            BX               LR
+   77 00000006         
+   78 00000006         loop
+   79 00000006 E7FE            B                loop
+   80 00000008         
+
+
+
+ARM Macro Assembler    Page 3 
+
+
+   81 00000008                 END
+              08003400 
+Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M3 --apcs=interw
+ork --depend=.\out\os_cpu_a.d -o.\out\os_cpu_a.o -IF:\stm32\n_boot1.1\RTE -IG:\
+Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0 -IG:\Keil_v5\ARM\CMSIS\Include --pred
+efine="__MICROLIB SETA 1" --predefine="__UVISION_VERSION SETA 514" --predefine=
+"STM32F10X_HD SETA 1" --list=.\os_cpu_a.lst sys\os_cpu_a.asm
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+.text 00000000
+
+Symbol: .text
+   Definitions
+      At line 61 in file sys\os_cpu_a.asm
+   Uses
+      None
+Comment: .text unused
+loop 00000006
+
+Symbol: loop
+   Definitions
+      At line 78 in file sys\os_cpu_a.asm
+   Uses
+      At line 79 in file sys\os_cpu_a.asm
+Comment: loop used once
+start_app 00000000
+
+Symbol: start_app
+   Definitions
+      At line 73 in file sys\os_cpu_a.asm
+   Uses
+      At line 26 in file sys\os_cpu_a.asm
+Comment: start_app used once
+3 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Absolute symbols
+
+NVIC_INT_CTRL E000ED04
+
+Symbol: NVIC_INT_CTRL
+   Definitions
+      At line 34 in file sys\os_cpu_a.asm
+   Uses
+      None
+Comment: NVIC_INT_CTRL unused
+NVIC_PENDSVSET 10000000
+
+Symbol: NVIC_PENDSVSET
+   Definitions
+      At line 37 in file sys\os_cpu_a.asm
+   Uses
+      None
+Comment: NVIC_PENDSVSET unused
+NVIC_PENDSV_PRI 000000FF
+
+Symbol: NVIC_PENDSV_PRI
+   Definitions
+      At line 36 in file sys\os_cpu_a.asm
+   Uses
+      None
+Comment: NVIC_PENDSV_PRI unused
+NVIC_SYSPRI14 E000ED22
+
+Symbol: NVIC_SYSPRI14
+   Definitions
+      At line 35 in file sys\os_cpu_a.asm
+   Uses
+      None
+Comment: NVIC_SYSPRI14 unused
+4 symbols
+342 symbols in table
